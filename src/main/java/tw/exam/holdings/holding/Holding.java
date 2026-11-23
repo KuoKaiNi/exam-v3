@@ -1,13 +1,10 @@
 package tw.exam.holdings.holding;
 
-import java.math.BigDecimal;
-
 import tw.exam.holdings.quote.Market;
 
-/** name、market 在第 3 題之前建的資料可能是 null，背景更新時會補上。 */
-public record Holding(long id, String code, String name, Market market, int lots, BigDecimal buyPrice) {
-
-    public long shares() {
-        return lots * 1000L;
-    }
+/**
+ * 一檔股票（2.0 起股數、成本都從交易紀錄算，這裡只記代號、名稱、市場別）。
+ * id 沿用 1.0，App 1.0 記住的 id 升級後仍然有效。
+ */
+public record Holding(long id, String code, String name, Market market) {
 }

@@ -87,21 +87,22 @@ public class QuoteService {
         Instant deadline = clock.instant().plus(props.lookupTimeout());
         CompletableFuture<MonthData> twse = CompletableFuture.supplyAsync(() -> recent(Market.TWSE, code, deadline), lookupPool);
         CompletableFuture<MonthData> tpex = CompletableFuture.supplyAsync(() -> recent(Market.TPEX, code, deadline), lookupPool);
-        // 哪一邊先找到就先回，不用等另一邊查完（上櫃股不必等證交所排隊）
+        // 哪一邊先找到就先回，不用等另一邊查完（上櫃股不必等證交所排隊）。
+        // 寫快取只由「真的完成結果」的那一方做一次，免得後到的回呼把查詢時間蓋掉。
         CompletableFuture<Lookup> result = new CompletableFuture<>();
         twse.thenAccept(d -> {
             if (d.status() == MonthData.Status.FOUND) {
-                result.complete(found(Market.TWSE, code, d));
+                completeOnce(result, code, found(Market.TWSE, code, d));
             }
         });
         tpex.thenAccept(d -> {
             if (d.status() == MonthData.Status.FOUND) {
-                result.complete(found(Market.TPEX, code, d));
+                completeOnce(result, code, found(Market.TPEX, code, d));
             }
         });
         // 注意：這個回呼可能比上面的 thenAccept 先跑（CompletableFuture 後註冊的先執行），
         // 所以這裡也要先看有沒有哪一邊找到，不能假設兩邊都沒找到。
-        CompletableFuture.allOf(twse, tpex).whenComplete((v, ex) -> result.complete(
+        CompletableFuture.allOf(twse, tpex).whenComplete((v, ex) -> completeOnce(result, code,
                 ex != null ? new Lookup.Unavailable(ex.toString()) : conclude(code, twse.join(), tpex.join())));
         try {
             return result.get(props.lookupTimeout().toMillis() + 500, TimeUnit.MILLISECONDS);
@@ -115,7 +116,7 @@ public class QuoteService {
     }
 
     /** 兩邊都查完：有找到就回找到；都正常回「沒有」才算代號不存在；其他情況是查不到。 */
-    private Lookup conclude(String code, MonthData twse, MonthData tpex) {
+    private static Lookup conclude(String code, MonthData twse, MonthData tpex) {
         if (twse.status() == MonthData.Status.FOUND) {
             return found(Market.TWSE, code, twse);
         }
@@ -187,11 +188,19 @@ public class QuoteService {
         return data;
     }
 
-    private Lookup found(Market market, String code, MonthData data) {
-        Optional<Quote> quote = toQuote(market, code, data);
-        cache.put(code, new Entry(quote.orElse(null), clock.instant()));
-        quote.ifPresent(this::save);
-        return new Lookup.Found(market, data.name(), quote.orElse(null));
+    /** 只組結果，不寫快取。 */
+    private static Lookup found(Market market, String code, MonthData data) {
+        return new Lookup.Found(market, data.name(), toQuote(market, code, data).orElse(null));
+    }
+
+    /** 只有真的把結果放進 result 的那一方寫快取，所以只寫一次。 */
+    private void completeOnce(CompletableFuture<Lookup> result, String code, Lookup lookup) {
+        if (result.complete(lookup) && lookup instanceof Lookup.Found f) {
+            cache.put(code, new Entry(f.quote(), clock.instant()));
+            if (f.quote() != null) {
+                save(f.quote());
+            }
+        }
     }
 
     private static Optional<Quote> toQuote(Market market, String code, MonthData data) {

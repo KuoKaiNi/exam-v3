@@ -1,7 +1,7 @@
 package tw.exam.holdings.holding;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
@@ -11,6 +11,7 @@ import tw.exam.holdings.AppException;
 import tw.exam.holdings.quote.QuoteService;
 import tw.exam.holdings.quote.QuoteService.Lookup;
 
+/** 股票本身（代號、名稱、市場別）。交易的增刪改在 TradeService。 */
 @Service
 public class HoldingService {
 
@@ -30,42 +31,37 @@ public class HoldingService {
         return repository.findById(id).orElseThrow(() -> AppException.notFound(id));
     }
 
-    /** 參數已經過 {@link HoldingInput} 檢查。 */
-    public Holding create(String code, int lots, BigDecimal buyPrice) {
-        if (repository.existsByCode(code)) {
-            throw AppException.duplicate(code);
+    public Optional<Holding> findByCode(String code) {
+        return repository.findByCode(code);
+    }
+
+    /** 第一次記這檔：向官方查代號，判斷上市或上櫃（最多約 8 秒）。不在資料庫交易裡做。 */
+    public Holding getOrCreate(String code) {
+        Optional<Holding> existing = repository.findByCode(code);
+        if (existing.isPresent()) {
+            return existing.get();
         }
         Lookup lookup = quotes.lookup(code);
         if (lookup instanceof Lookup.NotFound) {
             throw new AppException(HttpStatus.NOT_FOUND, "STOCK_NOT_FOUND",
                     "查不到股票代號 " + code + "，上市、上櫃都沒有這檔");
         }
-        if (lookup instanceof Lookup.Unavailable u) {
+        if (lookup instanceof Lookup.Unavailable) {
             throw new AppException(HttpStatus.SERVICE_UNAVAILABLE, "QUOTE_UNAVAILABLE",
                     "官方行情網站暫時查不到，無法確認 " + code + " 是否存在，請稍後再試");
         }
         Lookup.Found found = (Lookup.Found) lookup;
         try {
-            long id = repository.insert(code, found.name(), found.market(), lots, buyPrice);
-            return get(id);
+            return get(repository.insert(code, found.name(), found.market()));
         } catch (DuplicateKeyException e) {
-            // 兩個請求同時新增同一代號：由資料庫唯一鍵擋下
-            throw AppException.duplicate(code);
+            // 手機和電腦同時記第一筆
+            return repository.findByCode(code).orElseThrow();
         }
-    }
-
-    public Holding update(long id, int lots, BigDecimal buyPrice) {
-        if (!repository.update(id, lots, buyPrice)) {
-            throw AppException.notFound(id);
-        }
-        return get(id);
     }
 
     public void delete(long id) {
         Holding h = get(id);
-        if (!repository.delete(id)) {
-            throw AppException.notFound(id);
-        }
+        repository.delete(id);
         quotes.evict(h.code());
     }
 

@@ -21,3 +21,5 @@ td.actions form { display: inline; margin-left: .5rem; }
 .summary .value.big { font-size: 1.6rem; font-weight: bold; }
 .summary .hint { flex-basis: 100%; margin: 0; }
 td.num { font-variant-numeric: tabular-nums; }
+tr.closed td { color: #888; }
+.holding-form select, .holding-form input[type=date] { width: auto; }

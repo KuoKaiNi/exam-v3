@@ -11,17 +11,17 @@
 <h1>持股清單</h1>
 
 <section class="summary" th:unless="${#lists.isEmpty(positions)}">
-    <div><span class="label">總成本</span><span class="value" th:text="${#numbers.formatInteger(summary.totalCost, 1, 'COMMA')}">1,301,852</span></div>
-    <div><span class="label">市值</span><span class="value" th:text="${#numbers.formatInteger(summary.marketValue, 1, 'COMMA')}">1,391,000</span></div>
-    <div><span class="label">盈虧</span><span class="value big"
-        th:classappend="${summary.pnl > 0 ? 'profit' : (summary.pnl < 0 ? 'loss' : '')}"
-        th:text="${(summary.pnl > 0 ? '+' : '') + #numbers.formatInteger(summary.pnl, 1, 'COMMA')}">+83,576</span></div>
-    <div><span class="label">收益率</span><span class="value big"
-        th:classappend="${summary.returnPct.signum() > 0 ? 'profit' : (summary.returnPct.signum() < 0 ? 'loss' : '')}"
-        th:text="${(summary.returnPct.signum() > 0 ? '+' : '') + summary.returnPct + '%'}">+6.42%</span></div>
-    <p class="hint" th:if="${summary.quoteMissing > 0}"
-       th:text="|有 ${summary.quoteMissing} 筆收盤價未取得，沒有算進市值和盈虧，但成本有算進總成本。|"></p>
-    <p class="hint">盈虧＝假設現在用收盤價全部賣出，扣掉買賣手續費（0.1425%，最低 20 元）和證交稅（股票 0.3%、ETF 0.1%）後淨賺多少。</p>
+    <div><span class="label">含息總報酬</span><span class="value big"><span th:replace="~{fragments :: money(${summary.totalReturn})}"></span></span></div>
+    <div><span class="label">未實現損益</span><span class="value"><span th:replace="~{fragments :: money(${summary.unrealizedPnl})}"></span></span></div>
+    <div><span class="label">已實現損益</span><span class="value"><span th:replace="~{fragments :: money(${summary.realizedPnl})}"></span></span></div>
+    <div><span class="label">累計現金股利</span><span class="value"><span th:replace="~{fragments :: plain(${summary.cashDividends})}"></span></span></div>
+    <div><span class="label">剩餘成本</span><span class="value"><span th:replace="~{fragments :: plain(${summary.totalCost})}"></span></span></div>
+    <div><span class="label">市值</span><span class="value"><span th:replace="~{fragments :: plain(${summary.marketValue})}"></span></span></div>
+    <p class="hint" th:if="${summary.priceMissing > 0}"
+       th:text="|有 ${summary.priceMissing} 檔收盤價未取得，沒有算進市值和未實現損益，含息總報酬會偏低。|"></p>
+    <p class="hint" th:if="${summary.dividendDataIncomplete > 0}"
+       th:text="|有 ${summary.dividendDataIncomplete} 檔的官方除權息資料還沒拿齊，股利可能少算，系統會在背景補抓。|"></p>
+    <p class="hint">含息總報酬＝已實現損益＋未實現損益＋累計現金股利。未實現損益＝假設用收盤價把剩下的全部賣掉，扣手續費（0.1425%，最低 20 元）和證交稅（股票 0.3%、ETF 0.1%）後減剩餘成本。</p>
 </section>
 
 <p class="message" th:if="${message}" th:text="${message}"></p>
@@ -30,57 +30,37 @@
 <table class="holdings" th:unless="${#lists.isEmpty(positions)}">
     <thead>
     <tr>
-        <th>代號</th>
-        <th>名稱</th>
-        <th>市場</th>
-        <th class="num">張數</th>
-        <th class="num">買進價</th>
-        <th class="num">收盤價</th>
-        <th>收盤日期</th>
-        <th class="num">盈虧</th>
-        <th class="num">收益率</th>
+        <th>代號</th><th>名稱</th><th>市場</th>
+        <th class="num">股數</th><th class="num">平均成本</th><th class="num">收盤價</th>
+        <th class="num">未實現</th><th class="num">已實現</th><th class="num">現金股利</th><th class="num">含息總報酬</th>
         <th></th>
     </tr>
     </thead>
     <tbody>
-    <tr th:each="p : ${positions}" th:with="h=${p.holding}">
-        <td th:text="${h.code}">2330</td>
+    <tr th:each="p : ${positions}" th:classappend="${p.open ? '' : 'closed'}">
+        <td><a th:href="@{/holdings/{id}(id=${p.holding.id})}" th:text="${p.holding.code}">2330</a></td>
         <td th:text="${p.name}">台積電</td>
-        <td th:text="${h.market != null ? h.market.label : ''}">上市</td>
-        <td class="num" th:text="${h.lots}">1</td>
-        <td class="num" th:text="${#numbers.formatDecimal(h.buyPrice, 1, 'COMMA', 2, 'POINT')}">1,000.00</td>
-        <td class="num" th:if="${p.quote != null}" th:text="${#numbers.formatDecimal(p.quote.close, 1, 'COMMA', 2, 'POINT')}">1,100.00</td>
-        <td th:if="${p.quote != null}" th:text="${p.quote.date}">2026-11-12</td>
-        <td class="num missing" th:if="${p.quote == null}">未取得</td>
-        <td th:if="${p.quote == null}"></td>
-        <td class="num" th:if="${p.pnl != null}"
-            th:classappend="${p.pnl.pnl > 0 ? 'profit' : (p.pnl.pnl < 0 ? 'loss' : '')}"
-            th:text="${(p.pnl.pnl > 0 ? '+' : '') + #numbers.formatInteger(p.pnl.pnl, 1, 'COMMA')}">+93,708</td>
-        <td class="num" th:if="${p.pnl != null}"
-            th:classappend="${p.pnl.returnPct.signum() > 0 ? 'profit' : (p.pnl.returnPct.signum() < 0 ? 'loss' : '')}"
-            th:text="${(p.pnl.returnPct.signum() > 0 ? '+' : '') + p.pnl.returnPct + '%'}">+9.36%</td>
-        <td class="num missing" th:if="${p.pnl == null}">未取得</td>
-        <td class="num missing" th:if="${p.pnl == null}">未取得</td>
-        <td class="actions">
-            <a th:href="@{/holdings/{id}/edit(id=${h.id})}">修改</a>
-            <form method="post" th:action="@{/holdings/{id}/delete(id=${h.id})}"
-                  th:attr="onsubmit=|return confirm('確定要刪除 ${h.code} 嗎？')|">
-                <button type="submit">刪除</button>
-            </form>
+        <td th:text="${p.holding.market != null ? p.holding.market.label : ''}">上市</td>
+        <td class="num" th:text="${p.open ? #numbers.formatInteger(p.shares, 1, 'COMMA') : '已全部賣出'}">1,000</td>
+        <td class="num"><span th:replace="~{fragments :: price(${p.ledger.avgCost})}"></span></td>
+        <td class="num">
+            <span th:if="${p.quote != null}" th:text="${#numbers.formatDecimal(p.quote.close, 1, 'COMMA', 2, 'POINT')}">1,100.00</span>
+            <span th:if="${p.quote != null}" class="hint" th:text="${#temporals.format(p.quote.date, 'MM-dd')}">11-23</span>
+            <span th:if="${p.quote == null and p.open}" class="missing">未取得</span>
         </td>
+        <td class="num"><span th:replace="~{fragments :: money(${p.unrealized})}"></span></td>
+        <td class="num"><span th:replace="~{fragments :: money(${p.ledger.realizedPnl})}"></span></td>
+        <td class="num"><span th:text="${#numbers.formatInteger(p.ledger.cashDividends, 1, 'COMMA')}">0</span><span th:unless="${p.dividendDataComplete}" class="hint" title="官方除權息資料還沒拿齊"> *</span></td>
+        <td class="num"><span th:replace="~{fragments :: money(${p.totalReturn})}"></span></td>
+        <td><a th:href="@{/holdings/{id}(id=${p.holding.id})}">明細</a></td>
     </tr>
     </tbody>
 </table>
-<p th:if="${#lists.isEmpty(positions)}">還沒有持股，從下面新增第一筆。</p>
+<p th:if="${#lists.isEmpty(positions)}">還沒有任何交易，從下面記第一筆。</p>
 
-<h2>新增持股</h2>
-<form method="post" th:action="@{/holdings}" th:object="${form}" class="holding-form">
-    <label>股票代號 <input type="text" th:field="*{code}" placeholder="例：2330" maxlength="10"></label>
-    <label>張數 <input type="text" inputmode="numeric" th:field="*{lots}" placeholder="1 ～ 999"></label>
-    <label>買進價 <input type="text" inputmode="decimal" th:field="*{buyPrice}" placeholder="例：1000.00"></label>
-    <button type="submit">新增</button>
-</form>
-<p class="hint">收盤價取自臺灣證券交易所、證券櫃檯買賣中心公布的資料；系統在背景定時更新，不是即時價。<br>
-    1 張 = 1,000 股。同一個代號只能有一筆，要加碼請修改原本那筆。</p>
+<h2>記一筆交易</h2>
+<div th:replace="~{fragments :: tradeForm(@{/trades}, null, null)}"></div>
+<p class="hint">每次買進、賣出都記一筆，零股照實際股數填（1 張 = 1,000 股）。除權息依交易日期自動算，不用自己輸入。<br>
+    收盤價、除權息取自臺灣證券交易所、證券櫃檯買賣中心公布的資料；系統在背景定時更新，不是即時價。</p>
 </body>
 </html>

@@ -1,6 +1,5 @@
 package tw.exam.holdings.holding;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -17,13 +16,11 @@ import tw.exam.holdings.quote.Market;
 @Repository
 public class HoldingRepository {
 
-    private static final String COLUMNS = "id, code, name, market, lots, buy_price";
+    private static final String COLUMNS = "id, code, name, market";
 
-    // 自己寫對應：用 JdbcClient 預設的屬性對應會先找 buyPrice 欄位，H2 每列都記一筆例外到 trace 檔
     private static final RowMapper<Holding> MAPPER = (rs, i) -> new Holding(
             rs.getLong("id"), rs.getString("code"), rs.getString("name"),
-            rs.getString("market") == null ? null : Market.valueOf(rs.getString("market")),
-            rs.getInt("lots"), rs.getBigDecimal("buy_price"));
+            rs.getString("market") == null ? null : Market.valueOf(rs.getString("market")));
 
     private final JdbcClient jdbc;
     private final Clock clock;
@@ -34,40 +31,34 @@ public class HoldingRepository {
     }
 
     public List<Holding> findAll() {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM holding ORDER BY code")
-                .query(MAPPER).list();
+        return jdbc.sql("SELECT " + COLUMNS + " FROM holding ORDER BY code").query(MAPPER).list();
     }
 
     public Optional<Holding> findById(long id) {
-        return jdbc.sql("SELECT " + COLUMNS + " FROM holding WHERE id = ?")
-                .param(id).query(MAPPER).optional();
+        return jdbc.sql("SELECT " + COLUMNS + " FROM holding WHERE id = ?").param(id).query(MAPPER).optional();
     }
 
-    public boolean existsByCode(String code) {
-        return jdbc.sql("SELECT COUNT(*) FROM holding WHERE code = ?")
-                .param(code).query(Integer.class).single() > 0;
+    public Optional<Holding> findByCode(String code) {
+        return jdbc.sql("SELECT " + COLUMNS + " FROM holding WHERE code = ?").param(code).query(MAPPER).optional();
     }
 
-    /** code 重複時資料庫的唯一鍵會丟 DuplicateKeyException。 */
-    public long insert(String code, String name, Market market, int lots, BigDecimal buyPrice) {
+    /** 在交易裡鎖住這一檔，同一檔的修改排隊做（手機和電腦同時改時不會算錯股數）。 */
+    public boolean lock(long id) {
+        return jdbc.sql("SELECT id FROM holding WHERE id = ? FOR UPDATE").param(id).query(Long.class).optional().isPresent();
+    }
+
+    /** code 重複時丟 DuplicateKeyException。 */
+    public long insert(String code, String name, Market market) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         KeyHolder keys = new GeneratedKeyHolder();
-        jdbc.sql("INSERT INTO holding (code, name, market, lots, buy_price, created_at, updated_at)"
-                        + " VALUES (?, ?, ?, ?, ?, ?, ?)")
-                .params(code, name, market.name(), lots, buyPrice, now, now)
+        jdbc.sql("INSERT INTO holding (code, name, market, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+                .params(code, name, market.name(), now, now)
                 .update(keys, "id");
         return keys.getKey().longValue();
     }
 
-    public boolean update(long id, int lots, BigDecimal buyPrice) {
-        return jdbc.sql("UPDATE holding SET lots = ?, buy_price = ?, updated_at = ? WHERE id = ?")
-                .params(lots, buyPrice, OffsetDateTime.now(clock), id)
-                .update() > 0;
-    }
-
     public void updateNameMarket(long id, String name, Market market) {
-        jdbc.sql("UPDATE holding SET name = ?, market = ? WHERE id = ?")
-                .params(name, market.name(), id).update();
+        jdbc.sql("UPDATE holding SET name = ?, market = ? WHERE id = ?").params(name, market.name(), id).update();
     }
 
     public boolean delete(long id) {

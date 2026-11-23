@@ -23,6 +23,7 @@ import tw.exam.holdings.holding.Holding;
 import tw.exam.holdings.holding.HoldingInput;
 import tw.exam.holdings.holding.HoldingInput.Errors;
 import tw.exam.holdings.holding.HoldingService;
+import tw.exam.holdings.holding.TradeService;
 import tw.exam.holdings.portfolio.PortfolioService;
 
 /**
@@ -40,16 +41,19 @@ public class HoldingApiController {
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
     private final HoldingService holdings;
+    private final TradeService tradeService;
     private final PortfolioService portfolio;
 
-    public HoldingApiController(HoldingService holdings, PortfolioService portfolio) {
+    public HoldingApiController(HoldingService holdings, TradeService tradeService, PortfolioService portfolio) {
         this.holdings = holdings;
+        this.tradeService = tradeService;
         this.portfolio = portfolio;
     }
 
+    /** 2.0 起：已經全部賣掉的不列出（1.0 沒有「已賣出」的概念）。 */
     @GetMapping("/holdings")
     public List<HoldingDto> list() {
-        return portfolio.positions().stream().map(HoldingDto::of).toList();
+        return portfolio.openPositions().stream().map(HoldingDto::of).toList();
     }
 
     @GetMapping("/holdings/{id}")
@@ -65,7 +69,7 @@ public class HoldingApiController {
         Integer lots = lots(json.get("lots"), errors);
         BigDecimal price = price(json.get("buy_price"), errors);
         errors.throwIfAny();
-        Holding h = holdings.create(code, lots, price);
+        Holding h = tradeService.v1Create(code, lots, price);
         return ResponseEntity.status(HttpStatus.CREATED).body(HoldingDto.of(portfolio.position(h)));
     }
 
@@ -78,12 +82,12 @@ public class HoldingApiController {
         Integer lots = lots(json.get("lots"), errors);
         BigDecimal price = price(json.get("buy_price"), errors);
         errors.throwIfAny();
-        return HoldingDto.of(portfolio.position(holdings.update(id, lots, price)));
+        return HoldingDto.of(portfolio.position(tradeService.v1Update(id, lots, price)));
     }
 
     @DeleteMapping("/holdings/{id}")
     public ResponseEntity<Void> delete(@PathVariable long id) {
-        holdings.delete(id);
+        tradeService.v1Delete(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -92,7 +96,7 @@ public class HoldingApiController {
         return SummaryDto.of(portfolio.summary());
     }
 
-    private static JsonNode parseObject(String body) {
+    static JsonNode parseObject(String body) {
         if (body == null || body.isBlank()) {
             throw AppException.validation("請求內容是空的，要送 JSON 物件");
         }
@@ -108,7 +112,7 @@ public class HoldingApiController {
         return json;
     }
 
-    private static String code(JsonNode node, Errors errors) {
+    static String code(JsonNode node, Errors errors) {
         if (node != null && !node.isNull() && !node.isTextual()) {
             errors.add("股票代號要是字串，例如 \"2330\"");
             return null;
@@ -120,16 +124,16 @@ public class HoldingApiController {
         return HoldingInput.lots(number(node), notNumber(node), errors);
     }
 
-    private static BigDecimal price(JsonNode node, Errors errors) {
+    static BigDecimal price(JsonNode node, Errors errors) {
         return HoldingInput.buyPrice(number(node), notNumber(node), errors);
     }
 
-    private static BigDecimal number(JsonNode node) {
+    static BigDecimal number(JsonNode node) {
         return node != null && node.isNumber() ? node.decimalValue() : null;
     }
 
     /** 有給值但不是 JSON 數字（字串、布林、陣列…）。 */
-    private static boolean notNumber(JsonNode node) {
+    static boolean notNumber(JsonNode node) {
         return node != null && !node.isNull() && !node.isNumber();
     }
 }

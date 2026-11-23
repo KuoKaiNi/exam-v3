@@ -11,6 +11,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import tw.exam.holdings.holding.Holding;
+import tw.exam.holdings.ledger.Ledger;
+import tw.exam.holdings.ledger.Side;
+import tw.exam.holdings.ledger.Trade;
 import tw.exam.holdings.quote.Market;
 import tw.exam.holdings.quote.Quote;
 
@@ -84,11 +87,13 @@ class PnlCalculatorTest {
         assertThat(PnlCalculator.returnPct(0, 0)).isEqualByComparingTo("0");
     }
 
+    /** 1.0 的一筆持股＝一筆買進；summary 照 1.0 規格算。 */
     static Position position(long id, String code, int lots, String buy, String close) {
-        Holding h = new Holding(id, code, code, Market.TWSE, lots, new BigDecimal(buy));
+        Holding h = new Holding(id, code, code, Market.TWSE);
+        List<Trade> trades = List.of(new Trade(id, id, Side.BUY, LocalDate.of(2026, 11, 1), lots * 1000L, new BigDecimal(buy), 1));
         Quote q = close == null ? null
                 : new Quote(code, code, Market.TWSE, LocalDate.of(2026, 11, 12), new BigDecimal(close));
-        return Position.of(h, q);
+        return new Position(h, trades, Ledger.compute(code, trades, List.of(), LocalDate.of(2026, 11, 23)), q, true);
     }
 
     @Test

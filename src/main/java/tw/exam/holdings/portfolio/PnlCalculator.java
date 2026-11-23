@@ -52,16 +52,16 @@ public final class PnlCalculator {
     }
 
     /** 成交金額＝價格 × 股數。價格最多兩位小數、股數是 1000 的倍數，所以一定是整數元。 */
-    static long amount(BigDecimal price, long shares) {
+    public static long amount(BigDecimal price, long shares) {
         return price.multiply(BigDecimal.valueOf(shares)).setScale(0, RoundingMode.HALF_UP).longValueExact();
     }
 
-    static long fee(long amount) {
+    public static long fee(long amount) {
         long fee = BigDecimal.valueOf(amount).multiply(FEE_RATE).setScale(0, RoundingMode.FLOOR).longValueExact();
         return Math.max(fee, MIN_FEE);
     }
 
-    static long tax(String code, long sellAmount) {
+    public static long tax(String code, long sellAmount) {
         BigDecimal rate = isEtf(code) ? TAX_ETF : TAX_STOCK;
         return BigDecimal.valueOf(sellAmount).multiply(rate).setScale(0, RoundingMode.FLOOR).longValueExact();
     }

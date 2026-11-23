@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>修改交易｜持股記帳</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+</head>
+<body>
+<p><a th:href="@{/holdings/{id}(id=${p.holding.id})}" th:text="|回 ${p.holding.code} ${p.name}|">回 2330</a></p>
+<h1 th:text="|修改 ${p.holding.code} 的交易|">修改交易</h1>
+<p class="error" th:if="${error}" th:text="${error}"></p>
+<form method="post" th:action="@{/trades/{id}(id=${trade.id})}" th:object="${form}" class="holding-form">
+    <input type="hidden" th:field="*{requestId}">
+    <input type="hidden" th:field="*{version}">
+    <label>買賣
+        <select th:field="*{side}">
+            <option value="BUY">買進</option>
+            <option value="SELL">賣出</option>
+        </select>
+    </label>
+    <label>日期 <input type="date" th:field="*{tradeDate}"></label>
+    <label>股數 <input type="text" inputmode="numeric" th:field="*{shares}"></label>
+    <label>每股價格 <input type="text" inputmode="decimal" th:field="*{price}"></label>
+    <button type="submit">儲存</button>
+</form>
+<p class="hint">代號不能改，要換股票請刪掉這筆再記一筆。改完後股利會依新的日期、股數重新計算。</p>
+</body>
+</html>

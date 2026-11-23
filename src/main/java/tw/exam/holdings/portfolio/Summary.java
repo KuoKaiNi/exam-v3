@@ -4,14 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * 總計（定義照 App 1.0 API 規格）：
- * <ul>
- *   <li>totalCost：每筆（買進金額 + 買進手續費）加總，取不到收盤價的也算進來</li>
- *   <li>marketValue：每筆（收盤價 × 股數）加總，不扣費用；取不到收盤價的不算</li>
- *   <li>pnl：每筆盈虧加總；取不到收盤價的不算</li>
- *   <li>returnPct：pnl ÷ totalCost × 100，四捨五入到小數第二位</li>
- *   <li>quoteMissing：取不到收盤價的筆數</li>
- * </ul>
+ * App 1.0 的總計（定義照 1.0 規格，只算還持有中的股票）：
+ * totalCost＝剩餘成本加總；marketValue、pnl 只算有收盤價的；pnl 是未實現損益；quoteMissing＝沒有收盤價的筆數。
  */
 public record Summary(long totalCost, long marketValue, long pnl, BigDecimal returnPct, int quoteMissing) {
 
@@ -21,12 +15,15 @@ public record Summary(long totalCost, long marketValue, long pnl, BigDecimal ret
         long pnl = 0;
         int missing = 0;
         for (Position p : positions) {
-            cost += p.cost();
-            if (p.pnl() == null) {
+            if (!p.open()) {
+                continue;
+            }
+            cost += p.ledger().totalCost();
+            if (p.quote() == null) {
                 missing++;
             } else {
-                value += p.pnl().sellAmount();
-                pnl += p.pnl().pnl();
+                value += p.marketValue();
+                pnl += p.unrealized();
             }
         }
         return new Summary(cost, value, pnl, PnlCalculator.returnPct(pnl, cost), missing);

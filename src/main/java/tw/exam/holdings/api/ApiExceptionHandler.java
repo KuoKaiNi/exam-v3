@@ -13,7 +13,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import tw.exam.holdings.AppException;
 
 /** API 的錯誤一律回 {"error":{"code","message"}}，App 才會顯示 message 而不是「資料格式錯誤」。 */
-@RestControllerAdvice(assignableTypes = HoldingApiController.class)
+@RestControllerAdvice(assignableTypes = {HoldingApiController.class, V2ApiController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApiExceptionHandler {
 

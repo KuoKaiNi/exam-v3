@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="|${p.holding.code} ${p.name}｜持股記帳|">持股記帳</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+</head>
+<body>
+<p><a th:href="@{/holdings}">回持股清單</a></p>
+<h1 th:text="|${p.holding.code} ${p.name}|">2330 台積電</h1>
+
+<section class="summary">
+    <div><span class="label">含息總報酬</span><span class="value big"><span th:replace="~{fragments :: money(${p.totalReturn})}"></span></span></div>
+    <div><span class="label">股數</span><span class="value" th:text="${#numbers.formatInteger(p.shares, 1, 'COMMA')}">1,000</span></div>
+    <div><span class="label">平均成本（含買進手續費）</span><span class="value"><span th:replace="~{fragments :: price(${p.ledger.avgCost})}"></span></span></div>
+    <div><span class="label">剩餘成本</span><span class="value" th:text="${#numbers.formatInteger(p.ledger.totalCost, 1, 'COMMA')}">0</span></div>
+    <div><span class="label">未實現損益</span><span class="value"><span th:replace="~{fragments :: money(${p.unrealized})}"></span></span></div>
+    <div><span class="label">已實現損益</span><span class="value"><span th:replace="~{fragments :: money(${p.ledger.realizedPnl})}"></span></span></div>
+    <div><span class="label">累計現金股利</span><span class="value" th:text="${#numbers.formatInteger(p.ledger.cashDividends, 1, 'COMMA')}">0</span></div>
+    <div><span class="label">累計配股</span><span class="value" th:text="|${#numbers.formatInteger(p.ledger.stockDividendShares, 1, 'COMMA')} 股|">0 股</span></div>
+    <p class="hint" th:if="${p.quote != null}" th:text="|收盤價 ${#numbers.formatDecimal(p.quote.close, 1, 'COMMA', 2, 'POINT')}（${p.quote.date}）|"></p>
+    <p class="hint" th:unless="${p.dividendDataComplete}">官方除權息資料還沒拿齊，股利可能少算，系統會在背景補抓。</p>
+</section>
+
+<p class="message" th:if="${message}" th:text="${message}"></p>
+<p class="error" th:if="${error}" th:text="${error}"></p>
+
+<h2>交易紀錄</h2>
+<table class="holdings">
+    <thead><tr><th>日期</th><th>買賣</th><th class="num">股數</th><th class="num">價格</th><th class="num">已實現損益</th><th></th></tr></thead>
+    <tbody>
+    <tr th:each="t : ${p.trades}">
+        <td th:text="${t.date}">2025-06-10</td>
+        <td th:text="${t.side.label}">買進</td>
+        <td class="num" th:text="${#numbers.formatInteger(t.shares, 1, 'COMMA')}">1,000</td>
+        <td class="num" th:text="${#numbers.formatDecimal(t.price, 1, 'COMMA', 2, 'POINT')}">1,000.00</td>
+        <td class="num"><span th:if="${p.ledger.realizedBySell[t.id] != null}" th:replace="~{fragments :: money(${p.ledger.realizedBySell[t.id]})}"></span></td>
+        <td class="actions">
+            <a th:href="@{/trades/{id}/edit(id=${t.id})}">修改</a>
+            <form method="post" th:action="@{/trades/{id}/delete(id=${t.id})}"
+                  th:attr="onsubmit=|return confirm('確定要刪除 ${t.date} 這筆${t.side.label}嗎？')|">
+                <input type="hidden" name="version" th:value="${t.version}">
+                <button type="submit">刪除</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<h2>除權息（依官方資料自動計算）</h2>
+<table class="holdings" th:unless="${#lists.isEmpty(p.ledger.dividends)}">
+    <thead><tr><th>除權息日</th><th>類別</th><th class="num">領取股數</th><th class="num">每股現金</th><th class="num">每千股配股</th>
+        <th class="num">現金股利</th><th class="num">配股</th><th class="num">預估二代健保補充保費</th></tr></thead>
+    <tbody>
+    <tr th:each="d : ${p.ledger.dividends}">
+        <td th:text="${d.exDate}">2025-06-12</td>
+        <td th:text="${d.kind}">息</td>
+        <td class="num" th:text="${#numbers.formatInteger(d.eligibleShares, 1, 'COMMA')}">1,000</td>
+        <td class="num" th:text="${d.cashPerShare != null ? d.cashPerShare.stripTrailingZeros().toPlainString() : '未取得'}">4.5</td>
+        <td class="num" th:text="${d.stockPerThousand != null ? d.stockPerThousand.stripTrailingZeros().toPlainString() : '未取得'}">0</td>
+        <td class="num" th:text="${d.cash != null ? #numbers.formatInteger(d.cash, 1, 'COMMA') : '未取得'}">4,500</td>
+        <td class="num" th:text="${d.stockShares != null ? d.stockShares + ' 股' : '未取得'}">0 股</td>
+        <td class="num" th:text="${d.known and d.nhiPremiumEstimate > 0 ? #numbers.formatInteger(d.nhiPremiumEstimate, 1, 'COMMA') : ''}"></td>
+    </tr>
+    </tbody>
+</table>
+<p th:if="${#lists.isEmpty(p.ledger.dividends)}" class="hint">持有期間沒有除權息（除權息日前一個交易日收盤時有持股才領得到）。</p>
+<p class="hint">領取股數＝除權息交易日前一個交易日收盤時的持股，除權息當天才買的領不到。現金股利元以下捨去，配股不足一股捨去，入帳日記在除權息交易日。<br>
+    單次現金股利 2 萬元以上，銀行入帳時會先扣二代健保補充保費 2.11%，所以實際入帳會比表上少；表上列的是預估，有免扣繳身分的不會扣。<br>
+    股票分割、減資這一版不處理，遇到時股數和成本不會自動調整。</p>
+
+<h2>記一筆這檔的交易</h2>
+<div th:replace="~{fragments :: tradeForm(@{/trades}, ${p.holding.code}, ${p.holding.id})}"></div>
+</body>
+</html>

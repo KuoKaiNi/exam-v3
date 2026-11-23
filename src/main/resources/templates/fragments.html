@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- 金額：正數紅色加 +、負數綠色；null 顯示「未取得」 -->
+<span th:fragment="money(v)" th:remove="tag">
+    <span th:if="${v == null}" class="missing">未取得</span>
+    <span th:if="${v != null}" th:classappend="${v > 0 ? 'profit' : (v < 0 ? 'loss' : '')}"
+          th:text="${(v > 0 ? '+' : '') + #numbers.formatInteger(v, 1, 'COMMA')}">+1,000</span>
+</span>
+<span th:fragment="plain(v)" th:remove="tag">
+    <span th:if="${v == null}" class="missing">未取得</span>
+    <span th:if="${v != null}" th:text="${#numbers.formatInteger(v, 1, 'COMMA')}">1,000</span>
+</span>
+<span th:fragment="pct(v)" th:remove="tag">
+    <span th:if="${v == null}" class="missing">未取得</span>
+    <span th:if="${v != null}" th:classappend="${v.signum() > 0 ? 'profit' : (v.signum() < 0 ? 'loss' : '')}"
+          th:text="${(v.signum() > 0 ? '+' : '') + v + '%'}">+1.00%</span>
+</span>
+<span th:fragment="price(v)" th:remove="tag">
+    <span th:if="${v == null}" class="missing">—</span>
+    <span th:if="${v != null}" th:text="${#numbers.formatDecimal(v, 1, 'COMMA', 2, 'POINT')}">1,000.00</span>
+</span>
+
+<form th:fragment="tradeForm(action, fixedCode, back)" method="post" th:action="${action}" th:object="${form}" class="holding-form">
+    <input type="hidden" th:field="*{requestId}">
+    <input type="hidden" name="back" th:if="${back != null}" th:value="${back}">
+    <label th:if="${fixedCode == null}">股票代號 <input type="text" th:field="*{code}" placeholder="例：2330" maxlength="10"></label>
+    <input type="hidden" th:if="${fixedCode != null}" name="code" th:value="${fixedCode}">
+    <label>買賣
+        <select th:field="*{side}">
+            <option value="BUY">買進</option>
+            <option value="SELL">賣出</option>
+        </select>
+    </label>
+    <label>日期 <input type="date" th:field="*{tradeDate}"></label>
+    <label>股數 <input type="text" inputmode="numeric" th:field="*{shares}" placeholder="例：1000 或 300"></label>
+    <label>每股價格 <input type="text" inputmode="decimal" th:field="*{price}" placeholder="例：1000.00"></label>
+    <button type="submit">記一筆</button>
+</form>
+</body>
+</html>
