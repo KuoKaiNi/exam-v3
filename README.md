@@ -19,12 +19,35 @@ Windows 用 `mvnw.cmd spring-boot:run`。
 
 想換埠號：`PORT=8085 ./mvnw spring-boot:run`。
 
+第一次啟動會下載 Maven 與相依套件，需要網路，約一兩分鐘。資料存在專案目錄下的 `data/`。
+
 ## 畫面
 
 | 網址 | 內容 |
 |---|---|
 | `/` | 首頁：標題與目前時間 |
-| `/holdings` | 持股清單：新增、修改、刪除 |
+| `/holdings` | 持股清單：盈虧、總計，新增、修改、刪除 |
+| `/api/v1/...` | 給手機 App 1.0 用的 API（見下面） |
+
+## 手機 App 1.0 用的 API
+
+照《App 1.0 API 規格》實作，路徑開頭 `/api/v1`，欄位用小寫加底線，錯誤一律回 `{"error":{"code":"...","message":"..."}}`。
+
+| 方法 | 路徑 | 成功 | 失敗 |
+|---|---|---|---|
+| GET | `/api/v1/holdings` | 200，持股陣列 | |
+| GET | `/api/v1/holdings/{id}` | 200 | 404 `NOT_FOUND` |
+| POST | `/api/v1/holdings` | 201 | 400 `VALIDATION_ERROR`、404 `STOCK_NOT_FOUND`、409 `DUPLICATE_CODE`、503 `QUOTE_UNAVAILABLE`（官方連不上，見 `questions.md` Q3） |
+| PUT | `/api/v1/holdings/{id}` | 200 | 400 `VALIDATION_ERROR`、404 `NOT_FOUND` |
+| DELETE | `/api/v1/holdings/{id}` | 204 | 404 `NOT_FOUND` |
+| GET | `/api/v1/summary` | 200 | |
+
+```bash
+curl -X POST localhost:8080/api/v1/holdings -H 'Content-Type: application/json' -d '{"code":"2330","lots":1,"buy_price":1000}'
+curl localhost:8080/api/v1/summary
+```
+
+App 1.0 的伺服器網址預設是 `http://10.0.2.2:8080`，跟這個專案的預設埠號一樣，用 Android 模擬器時不用改設定。換了埠號就到 App 右上角「設定」改。
 
 ## 官方行情
 
