@@ -8,6 +8,7 @@
 </head>
 <body>
 <h1>持股記帳</h1>
+<p><a href="/holdings" th:href="@{/holdings}">持股清單</a></p>
 <p>目前時間：<span id="now" th:text="${now}" th:attr="data-epoch=${epochMillis}">2026-01-01 00:00:00</span>（台北時間）</p>
 <script>
   // 以伺服器給的台北時間為起點每秒加一，不用瀏覽器的時區或時鐘

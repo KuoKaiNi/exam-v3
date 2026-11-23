@@ -1,2 +1,12 @@
 body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 2rem; color: #222; }
 h1 { margin-bottom: .5rem; }
+a { color: #0b5cad; }
+table.holdings { border-collapse: collapse; margin: 1rem 0; }
+table.holdings th, table.holdings td { border-bottom: 1px solid #ddd; padding: .4rem .7rem; text-align: left; white-space: nowrap; }
+table.holdings th.num, table.holdings td.num { text-align: right; }
+td.actions form { display: inline; margin-left: .5rem; }
+.message { background: #eef6ee; padding: .5rem .8rem; }
+.error { background: #fdecea; color: #a4000f; padding: .5rem .8rem; }
+.holding-form label { display: inline-block; margin-right: 1rem; }
+.holding-form input { width: 8rem; }
+.hint { color: #666; font-size: .9rem; }

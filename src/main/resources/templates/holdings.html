@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>持股清單｜持股記帳</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+</head>
+<body>
+<p><a th:href="@{/}">持股記帳</a></p>
+<h1>持股清單</h1>
+
+<p class="message" th:if="${message}" th:text="${message}"></p>
+<p class="error" th:if="${error}" th:text="${error}"></p>
+
+<table class="holdings" th:unless="${#lists.isEmpty(holdings)}">
+    <thead>
+    <tr>
+        <th>代號</th>
+        <th class="num">張數</th>
+        <th class="num">買進價</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="h : ${holdings}">
+        <td th:text="${h.code}">2330</td>
+        <td class="num" th:text="${h.lots}">1</td>
+        <td class="num" th:text="${#numbers.formatDecimal(h.buyPrice, 1, 'COMMA', 2, 'POINT')}">1,000.00</td>
+        <td class="actions">
+            <a th:href="@{/holdings/{id}/edit(id=${h.id})}">修改</a>
+            <form method="post" th:action="@{/holdings/{id}/delete(id=${h.id})}"
+                  th:attr="onsubmit=|return confirm('確定要刪除 ${h.code} 嗎？')|">
+                <button type="submit">刪除</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<p th:if="${#lists.isEmpty(holdings)}">還沒有持股，從下面新增第一筆。</p>
+
+<h2>新增持股</h2>
+<form method="post" th:action="@{/holdings}" th:object="${form}" class="holding-form">
+    <label>股票代號 <input type="text" th:field="*{code}" placeholder="例：2330" maxlength="10"></label>
+    <label>張數 <input type="text" inputmode="numeric" th:field="*{lots}" placeholder="1 ～ 999"></label>
+    <label>買進價 <input type="text" inputmode="decimal" th:field="*{buyPrice}" placeholder="例：1000.00"></label>
+    <button type="submit">新增</button>
+</form>
+<p class="hint">1 張 = 1,000 股。同一個代號只能有一筆，要加碼請修改原本那筆。</p>
+</body>
+</html>
