@@ -34,7 +34,9 @@ public class HoldingPageController {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new HoldingForm());
         }
-        model.addAttribute("positions", portfolio.positions());
+        var positions = portfolio.positions();
+        model.addAttribute("positions", positions);
+        model.addAttribute("summary", tw.exam.holdings.portfolio.Summary.of(positions));
         return "holdings";
     }
 

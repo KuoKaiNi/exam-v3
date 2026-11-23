@@ -10,6 +10,20 @@
 <p><a th:href="@{/}">持股記帳</a></p>
 <h1>持股清單</h1>
 
+<section class="summary" th:unless="${#lists.isEmpty(positions)}">
+    <div><span class="label">總成本</span><span class="value" th:text="${#numbers.formatInteger(summary.totalCost, 1, 'COMMA')}">1,301,852</span></div>
+    <div><span class="label">市值</span><span class="value" th:text="${#numbers.formatInteger(summary.marketValue, 1, 'COMMA')}">1,391,000</span></div>
+    <div><span class="label">盈虧</span><span class="value big"
+        th:classappend="${summary.pnl > 0 ? 'profit' : (summary.pnl < 0 ? 'loss' : '')}"
+        th:text="${(summary.pnl > 0 ? '+' : '') + #numbers.formatInteger(summary.pnl, 1, 'COMMA')}">+83,576</span></div>
+    <div><span class="label">收益率</span><span class="value big"
+        th:classappend="${summary.returnPct.signum() > 0 ? 'profit' : (summary.returnPct.signum() < 0 ? 'loss' : '')}"
+        th:text="${(summary.returnPct.signum() > 0 ? '+' : '') + summary.returnPct + '%'}">+6.42%</span></div>
+    <p class="hint" th:if="${summary.quoteMissing > 0}"
+       th:text="|有 ${summary.quoteMissing} 筆收盤價未取得，沒有算進市值和盈虧，但成本有算進總成本。|"></p>
+    <p class="hint">盈虧＝假設現在用收盤價全部賣出，扣掉買賣手續費（0.1425%，最低 20 元）和證交稅（股票 0.3%、ETF 0.1%）後淨賺多少。</p>
+</section>
+
 <p class="message" th:if="${message}" th:text="${message}"></p>
 <p class="error" th:if="${error}" th:text="${error}"></p>
 
@@ -23,6 +37,8 @@
         <th class="num">買進價</th>
         <th class="num">收盤價</th>
         <th>收盤日期</th>
+        <th class="num">盈虧</th>
+        <th class="num">收益率</th>
         <th></th>
     </tr>
     </thead>
@@ -37,6 +53,14 @@
         <td th:if="${p.quote != null}" th:text="${p.quote.date}">2026-11-12</td>
         <td class="num missing" th:if="${p.quote == null}">未取得</td>
         <td th:if="${p.quote == null}"></td>
+        <td class="num" th:if="${p.pnl != null}"
+            th:classappend="${p.pnl.pnl > 0 ? 'profit' : (p.pnl.pnl < 0 ? 'loss' : '')}"
+            th:text="${(p.pnl.pnl > 0 ? '+' : '') + #numbers.formatInteger(p.pnl.pnl, 1, 'COMMA')}">+93,708</td>
+        <td class="num" th:if="${p.pnl != null}"
+            th:classappend="${p.pnl.returnPct.signum() > 0 ? 'profit' : (p.pnl.returnPct.signum() < 0 ? 'loss' : '')}"
+            th:text="${(p.pnl.returnPct.signum() > 0 ? '+' : '') + p.pnl.returnPct + '%'}">+9.36%</td>
+        <td class="num missing" th:if="${p.pnl == null}">未取得</td>
+        <td class="num missing" th:if="${p.pnl == null}">未取得</td>
         <td class="actions">
             <a th:href="@{/holdings/{id}/edit(id=${h.id})}">修改</a>
             <form method="post" th:action="@{/holdings/{id}/delete(id=${h.id})}"

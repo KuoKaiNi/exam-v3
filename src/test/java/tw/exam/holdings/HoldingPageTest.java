@@ -77,9 +77,12 @@ class HoldingPageTest {
                 .andExpect(content().string(containsString("台積電")))
                 .andExpect(content().string(containsString("未取得")));
         when(quotes.cached("2330")).thenReturn(Optional.of(q));
+        // 3 張、買 980.5、收 1100：買 2,941,500＋手續費 4,191；賣 3,300,000－手續費 4,702－證交稅 9,900
         mvc.perform(get("/holdings"))
                 .andExpect(content().string(containsString("1,100.00")))
-                .andExpect(content().string(containsString("2026-11-23")));
+                .andExpect(content().string(containsString("2026-11-23")))
+                .andExpect(content().string(containsString("+339,707")))
+                .andExpect(content().string(containsString("class=\"num profit\"")));
 
         mvc.perform(post("/holdings/" + id + "/delete")).andExpect(status().is3xxRedirection());
         assertThat(service.list()).isEmpty();

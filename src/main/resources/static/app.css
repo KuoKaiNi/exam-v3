@@ -11,3 +11,13 @@ td.actions form { display: inline; margin-left: .5rem; }
 .holding-form input { width: 8rem; }
 .hint { color: #666; font-size: .9rem; }
 .missing { color: #888; }
+/* 台股慣例：紅色是賺、綠色是虧 */
+.profit { color: #d0021b; }
+.loss { color: #0a7d32; }
+.summary { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: baseline; background: #f7f7f7; padding: .8rem 1rem; margin: 1rem 0; }
+.summary div { display: flex; flex-direction: column; }
+.summary .label { color: #666; font-size: .85rem; }
+.summary .value { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.summary .value.big { font-size: 1.6rem; font-weight: bold; }
+.summary .hint { flex-basis: 100%; margin: 0; }
+td.num { font-variant-numeric: tabular-nums; }

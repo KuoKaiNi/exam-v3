@@ -25,6 +25,10 @@ public class PortfolioService {
     }
 
     public Position position(Holding h) {
-        return new Position(h, quotes.cached(h.code()).orElse(null));
+        return Position.of(h, quotes.cached(h.code()).orElse(null));
+    }
+
+    public Summary summary() {
+        return Summary.of(positions());
     }
 }
