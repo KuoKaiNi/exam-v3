@@ -35,7 +35,7 @@
         <td th:text="${t.side.label}">買進</td>
         <td class="num" th:text="${#numbers.formatInteger(t.shares, 1, 'COMMA')}">1,000</td>
         <td class="num" th:text="${#numbers.formatDecimal(t.price, 1, 'COMMA', 2, 'POINT')}">1,000.00</td>
-        <td class="num"><span th:if="${p.ledger.realizedBySell[t.id] != null}" th:replace="~{fragments :: money(${p.ledger.realizedBySell[t.id]})}"></span></td>
+        <td class="num"><th:block th:if="${p.ledger.realizedBySell[t.id] != null}"><span th:replace="~{fragments :: money(${p.ledger.realizedBySell[t.id]})}"></span></th:block></td>
         <td class="actions">
             <a th:href="@{/trades/{id}/edit(id=${t.id})}">修改</a>
             <form method="post" th:action="@{/trades/{id}/delete(id=${t.id})}"

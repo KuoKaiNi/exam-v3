@@ -125,7 +125,7 @@ public class ExRightService {
         }
         for (Holding h : all) {
             if (h.market() == Market.TWSE) {
-                syncDetails(h.code());
+                trades.findByHolding(h.id()).stream().findFirst().ifPresent(t -> syncDetails(h.code(), t.date()));
             }
         }
     }
@@ -164,10 +164,11 @@ public class ExRightService {
         log.info("抓 {} {} 年除權息表：{} 筆", market, year, parsed.rows().size());
     }
 
-    void syncDetails(String code) {
+    /** 只查持有期間（第一筆交易之後）的明細，持有前的用不到。 */
+    void syncDetails(String code, LocalDate firstTrade) {
         String source = props.baseUrl(Market.TWSE);
         for (ExRight e : store.findUnknown(source, code)) {
-            if (e.exDate().isAfter(today())) {
+            if (e.exDate().isAfter(today()) || !e.exDate().isAfter(firstTrade)) {
                 continue;
             }
             String path = String.format("/rwd/zh/exRight/TWT49UDetail?STK_NO=%s&T1=%04d%02d%02d&response=json",

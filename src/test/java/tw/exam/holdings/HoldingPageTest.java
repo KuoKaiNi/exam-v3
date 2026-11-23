@@ -78,6 +78,8 @@ class HoldingPageTest {
                 .andExpect(content().string(containsString("含息總報酬")));
         mvc.perform(get("/holdings/" + id))
                 .andExpect(content().string(containsString("交易紀錄")))
+                // 買進那幾列沒有已實現損益，不能顯示「未取得」
+                .andExpect(content().string(not(containsString("未取得"))))
                 .andExpect(content().string(containsString("2026-10-02")));
     }
 
