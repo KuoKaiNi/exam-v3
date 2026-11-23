@@ -14,9 +14,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+
 import tw.exam.holdings.holding.HoldingService;
+import tw.exam.holdings.quote.Market;
+import tw.exam.holdings.quote.Quote;
+import tw.exam.holdings.quote.QuoteService;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -30,8 +41,13 @@ class HoldingPageTest {
     @Autowired
     HoldingService service;
 
+    @MockitoBean
+    QuoteService quotes;
+
     @Test
     void createEditDeleteAndRejectDuplicate() throws Exception {
+        Quote q = new Quote("2330", "台積電", Market.TWSE, LocalDate.of(2026, 11, 23), new BigDecimal("1100.00"));
+        when(quotes.lookup("2330")).thenReturn(new QuoteService.Lookup.Found(Market.TWSE, "台積電", q));
         mvc.perform(post("/holdings").param("code", "2330").param("lots", "1").param("buyPrice", "1000"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/holdings"));
@@ -56,11 +72,29 @@ class HoldingPageTest {
                 .andExpect(content().string(containsString("張數要在 1 到 999 之間；買進價要填數字")));
         assertThat(service.get(id).lots()).isEqualTo(3);
 
-        mvc.perform(get("/holdings")).andExpect(content().string(containsString("980.50")));
+        mvc.perform(get("/holdings"))
+                .andExpect(content().string(containsString("980.50")))
+                .andExpect(content().string(containsString("台積電")))
+                .andExpect(content().string(containsString("未取得")));
+        when(quotes.cached("2330")).thenReturn(Optional.of(q));
+        mvc.perform(get("/holdings"))
+                .andExpect(content().string(containsString("1,100.00")))
+                .andExpect(content().string(containsString("2026-11-23")));
 
         mvc.perform(post("/holdings/" + id + "/delete")).andExpect(status().is3xxRedirection());
         assertThat(service.list()).isEmpty();
 
         mvc.perform(get("/holdings/" + id + "/edit")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void unknownCodeAndOfficialDownAreNotSaved() throws Exception {
+        when(quotes.lookup(anyString())).thenReturn(new QuoteService.Lookup.NotFound());
+        mvc.perform(post("/holdings").param("code", "9999").param("lots", "1").param("buyPrice", "10"))
+                .andExpect(content().string(containsString("查不到股票代號 9999")));
+        when(quotes.lookup(anyString())).thenReturn(new QuoteService.Lookup.Unavailable("down"));
+        mvc.perform(post("/holdings").param("code", "2317").param("lots", "1").param("buyPrice", "10"))
+                .andExpect(content().string(containsString("官方行情網站暫時查不到")));
+        assertThat(service.list()).isEmpty();
     }
 }

@@ -10,3 +10,4 @@ td.actions form { display: inline; margin-left: .5rem; }
 .holding-form label { display: inline-block; margin-right: 1rem; }
 .holding-form input { width: 8rem; }
 .hint { color: #666; font-size: .9rem; }
+.missing { color: #888; }

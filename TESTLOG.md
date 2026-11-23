@@ -4,6 +4,9 @@
 
 | # | 發現方式 | 重現步驟 | 問題 | 修好的 commit |
 |---|---|---|---|---|
-| 1 | 啟動後用 curl 送新增表單，看回應標頭 | `curl -i -d 'code=2330&lots=1&buyPrice=1000' localhost:8080/holdings` | 新增後 redirect 的網址變成 `/holdings;jsessionid=...`，session 代號跑到網址上，複製網址給別人會一起帶出去 | 第 2 題 commit（設定 `server.servlet.session.tracking-modes=cookie`） |
-| 2 | 新增表單代號欄打全形數字 | 代號填 `２３３０`（中文輸入法常見）按新增 | 顯示「股票代號格式不對」，但使用者看起來填的就是 2330 | 第 2 題 commit（代號先做 NFKC 正規化轉半形） |
-| 3 | 操作完看 `data/` 資料夾，多了 `holdings.trace.db` | 啟動後打開清單頁，再看 `data/holdings.trace.db` | 每讀一筆持股，H2 就記一筆 `Column "buyPrice" not found`：JdbcClient 預設對應先找駝峰欄位名稱，找不到才找 `buy_price`。功能正常但 trace 檔會一直長大 | 第 2 題 commit（改用自己寫的 RowMapper） |
+| 1 | 啟動後用 curl 送新增表單，看回應標頭 | `curl -i -d 'code=2330&lots=1&buyPrice=1000' localhost:8080/holdings` | 新增後 redirect 的網址變成 `/holdings;jsessionid=...`，session 代號跑到網址上，複製網址給別人會一起帶出去 | 42eeeca（設定 `server.servlet.session.tracking-modes=cookie`） |
+| 2 | 新增表單代號欄打全形數字 | 代號填 `２３３０`（中文輸入法常見）按新增 | 顯示「股票代號格式不對」，但使用者看起來填的就是 2330 | 42eeeca（代號先做 NFKC 正規化轉半形） |
+| 3 | 操作完看 `data/` 資料夾，多了 `holdings.trace.db` | 啟動後打開清單頁，再看 `data/holdings.trace.db` | 每讀一筆持股，H2 就記一筆 `Column "buyPrice" not found`：JdbcClient 預設對應先找駝峰欄位名稱，找不到才找 `buy_price`。功能正常但 trace 檔會一直長大 | 42eeeca（改用自己寫的 RowMapper） |
+| 4 | 第 3 題接上官方後，用真的證交所、櫃買中心新增 2330、6488、0050、9999、2363 並計時 | 新增上櫃股 6488 | 要 4.2 秒才有結果：程式先等證交所那邊查完兩個月（中間還要隔 2 秒）才看櫃買中心的結果，其實櫃買中心 0.5 秒就找到了 | 第 3 題 commit（任一邊先找到就回） |
+| 5 | 改完第 4 項後重新實測 | 清單已有幾筆時新增 1101（台泥），證交所比櫃買中心晚回應的情況 | 1101 明明在上市查得到，畫面卻顯示「官方行情網站暫時查不到」，資料沒存。原因是兩邊都查完的回呼可能比「找到了」的回呼先跑，而那段判斷沒考慮有一邊已經找到（第 4 項修改時 AI 自己寫出來的）。補了讓證交所故意慢回的測試，確認舊程式會失敗、新程式通過 | 第 3 題 commit |
+| 6 | 把兩個網址的主機換成連不上的位址（`http://localhost:9`）和不會回應的位址（`http://10.255.255.1`）啟動 | 打開清單、新增 2317 | 清單照常顯示、收盤價顯示「未取得」；新增分別 0.03 秒、3 秒內顯示「官方行情網站暫時查不到」，資料不存。沒有問題，記錄驗證過 | 不用修 |

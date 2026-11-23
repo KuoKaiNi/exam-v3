@@ -16,14 +16,17 @@ import tw.exam.holdings.holding.HoldingInput;
 import tw.exam.holdings.holding.HoldingInput.Errors;
 import tw.exam.holdings.holding.HoldingInput.ParsedNumber;
 import tw.exam.holdings.holding.HoldingService;
+import tw.exam.holdings.portfolio.PortfolioService;
 
 @Controller
 public class HoldingPageController {
 
     private final HoldingService service;
+    private final PortfolioService portfolio;
 
-    public HoldingPageController(HoldingService service) {
+    public HoldingPageController(HoldingService service, PortfolioService portfolio) {
         this.service = service;
+        this.portfolio = portfolio;
     }
 
     @GetMapping("/holdings")
@@ -31,7 +34,7 @@ public class HoldingPageController {
         if (!model.containsAttribute("form")) {
             model.addAttribute("form", new HoldingForm());
         }
-        model.addAttribute("holdings", service.list());
+        model.addAttribute("positions", portfolio.positions());
         return "holdings";
     }
 

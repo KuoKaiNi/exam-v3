@@ -26,6 +26,31 @@ Windows 用 `mvnw.cmd spring-boot:run`。
 | `/` | 首頁：標題與目前時間 |
 | `/holdings` | 持股清單：新增、修改、刪除 |
 
+## 官方行情
+
+股票名稱和收盤價只取自官方：上市查臺灣證券交易所（`/rwd/zh/afterTrading/STOCK_DAY`），上櫃查證券櫃檯買賣中心（`/www/zh-tw/afterTrading/tradingStock`）。
+
+- 新增持股時只填代號，系統同時查上市、上櫃，哪邊有就是哪個市場。兩邊都正常回「沒有」才算代號不存在；有一邊連不上就顯示「官方行情網站暫時查不到」，資料不儲存。最多約 8 秒有結果。
+- 打開清單**不會**向官方查，只讀伺服器記住的收盤價。
+- 伺服器每 5 分鐘在背景檢查一次：平日 13:30 以後還沒拿到當天收盤價的股票，每 20 分鐘重查一次，拿到就不再查。官方公布後最晚約 25 分鐘清單上看得到，不用重開伺服器。
+- 查證交所時每次至少間隔 2 秒；看到像被擋的回應（HTTP 403、429、轉址或回 HTML）就 10 分鐘內不再查那個網站。
+- 官方連不上時清單照常顯示，收盤價那格顯示「未取得」。
+
+### 換成別的行情伺服器
+
+主機部分用環境變數換，路徑和參數不變：
+
+```bash
+TWSE_BASE_URL=http://localhost:9000 TPEX_BASE_URL=http://localhost:9000 ./mvnw spring-boot:run
+```
+
+| 環境變數 | 預設 | 對應設定（`application.properties`） |
+|---|---|---|
+| `TWSE_BASE_URL` | `https://www.twse.com.tw` | `quote.twse-base-url` |
+| `TPEX_BASE_URL` | `https://www.tpex.org.tw` | `quote.tpex-base-url` |
+
+結尾有沒有 `/` 都可以。換主機後要重新啟動伺服器；伺服器記住的收盤價只放在記憶體，重啟就會向新主機重查。
+
 ## 資料庫
 
 用 **H2 檔案模式**，資料存在專案目錄下的 `data/holdings.mv.db`。

@@ -13,20 +13,30 @@
 <p class="message" th:if="${message}" th:text="${message}"></p>
 <p class="error" th:if="${error}" th:text="${error}"></p>
 
-<table class="holdings" th:unless="${#lists.isEmpty(holdings)}">
+<table class="holdings" th:unless="${#lists.isEmpty(positions)}">
     <thead>
     <tr>
         <th>代號</th>
+        <th>名稱</th>
+        <th>市場</th>
         <th class="num">張數</th>
         <th class="num">買進價</th>
+        <th class="num">收盤價</th>
+        <th>收盤日期</th>
         <th></th>
     </tr>
     </thead>
     <tbody>
-    <tr th:each="h : ${holdings}">
+    <tr th:each="p : ${positions}" th:with="h=${p.holding}">
         <td th:text="${h.code}">2330</td>
+        <td th:text="${p.name}">台積電</td>
+        <td th:text="${h.market != null ? h.market.label : ''}">上市</td>
         <td class="num" th:text="${h.lots}">1</td>
         <td class="num" th:text="${#numbers.formatDecimal(h.buyPrice, 1, 'COMMA', 2, 'POINT')}">1,000.00</td>
+        <td class="num" th:if="${p.quote != null}" th:text="${#numbers.formatDecimal(p.quote.close, 1, 'COMMA', 2, 'POINT')}">1,100.00</td>
+        <td th:if="${p.quote != null}" th:text="${p.quote.date}">2026-11-12</td>
+        <td class="num missing" th:if="${p.quote == null}">未取得</td>
+        <td th:if="${p.quote == null}"></td>
         <td class="actions">
             <a th:href="@{/holdings/{id}/edit(id=${h.id})}">修改</a>
             <form method="post" th:action="@{/holdings/{id}/delete(id=${h.id})}"
@@ -37,7 +47,7 @@
     </tr>
     </tbody>
 </table>
-<p th:if="${#lists.isEmpty(holdings)}">還沒有持股，從下面新增第一筆。</p>
+<p th:if="${#lists.isEmpty(positions)}">還沒有持股，從下面新增第一筆。</p>
 
 <h2>新增持股</h2>
 <form method="post" th:action="@{/holdings}" th:object="${form}" class="holding-form">
@@ -46,6 +56,7 @@
     <label>買進價 <input type="text" inputmode="decimal" th:field="*{buyPrice}" placeholder="例：1000.00"></label>
     <button type="submit">新增</button>
 </form>
-<p class="hint">1 張 = 1,000 股。同一個代號只能有一筆，要加碼請修改原本那筆。</p>
+<p class="hint">收盤價取自臺灣證券交易所、證券櫃檯買賣中心公布的資料；系統在背景定時更新，不是即時價。<br>
+    1 張 = 1,000 股。同一個代號只能有一筆，要加碼請修改原本那筆。</p>
 </body>
 </html>
