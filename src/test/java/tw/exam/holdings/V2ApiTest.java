@@ -122,6 +122,9 @@ class V2ApiTest {
                 .andExpect(jsonPath("$.dividends[0].cash").value(6750))
                 .andExpect(jsonPath("$.dividend_data_complete").value(true))
                 .andExpect(jsonPath("$.trades[0].trade_date").value("2025-06-10"));
+        // 每股股利、配股不能出現 0E-8 這種寫法
+        String raw = mvc.perform(get("/api/v2/holdings/" + holdingId)).andReturn().getResponse().getContentAsString();
+        assertThat(raw).contains("\"cash_per_share\":4.50002,\"stock_per_thousand\":0,").doesNotContain("E-");
         // 含息總報酬＝0＋未實現＋6,750
         JsonNode h = json(mvc.perform(get("/api/v2/holdings/" + holdingId)));
         assertThat(h.path("total_return").asLong()).isEqualTo(h.path("unrealized_pnl").asLong() + 6750);

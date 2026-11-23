@@ -47,8 +47,17 @@ public final class V2Dtos {
             @JsonProperty("nhi_premium_estimate") Long nhiPremiumEstimate) {
 
         static DividendDto of(DividendLine d) {
-            return new DividendDto(d.exDate().toString(), d.kind(), d.eligibleShares(), d.cashPerShare(),
-                    d.stockPerThousand(), d.cash(), d.stockShares(), d.known() ? d.nhiPremiumEstimate() : null);
+            return new DividendDto(d.exDate().toString(), d.kind(), d.eligibleShares(), plain(d.cashPerShare()),
+                    plain(d.stockPerThousand()), d.cash(), d.stockShares(), d.known() ? d.nhiPremiumEstimate() : null);
+        }
+
+        /** 資料庫存 8 位小數，輸出時去掉多餘的 0（1.20000000 → 1.2，0E-8 → 0）。 */
+        private static BigDecimal plain(BigDecimal v) {
+            if (v == null) {
+                return null;
+            }
+            BigDecimal s = v.stripTrailingZeros();
+            return s.scale() < 0 ? s.setScale(0) : s;
         }
     }
 
