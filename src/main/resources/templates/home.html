@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>持股記帳</title>
+    <link rel="stylesheet" th:href="@{/app.css}">
+</head>
+<body>
+<h1>持股記帳</h1>
+<p>目前時間：<span id="now" th:text="${now}" th:attr="data-epoch=${epochMillis}">2026-01-01 00:00:00</span>（台北時間）</p>
+<script>
+  // 以伺服器給的台北時間為起點每秒加一，不用瀏覽器的時區或時鐘
+  (function () {
+    var el = document.getElementById('now');
+    var serverMs = Number(el.getAttribute('data-epoch'));
+    var startedAt = Date.now();
+    function pad(n) { return (n < 10 ? '0' : '') + n; }
+    function tick() {
+      // 台北固定 UTC+8、沒有日光節約時間
+      var d = new Date(serverMs + (Date.now() - startedAt) + 8 * 3600 * 1000);
+      el.textContent = d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) + ' '
+        + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds());
+    }
+    setInterval(tick, 1000);
+  })();
+</script>
+</body>
+</html>
