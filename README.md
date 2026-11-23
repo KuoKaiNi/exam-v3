@@ -49,7 +49,9 @@ TWSE_BASE_URL=http://localhost:9000 TPEX_BASE_URL=http://localhost:9000 ./mvnw s
 | `TWSE_BASE_URL` | `https://www.twse.com.tw` | `quote.twse-base-url` |
 | `TPEX_BASE_URL` | `https://www.tpex.org.tw` | `quote.tpex-base-url` |
 
-結尾有沒有 `/` 都可以。換主機後要重新啟動伺服器；伺服器記住的收盤價只放在記憶體，重啟就會向新主機重查。
+結尾有沒有 `/` 都可以。換主機後要重新啟動伺服器。
+
+查到的收盤價會存進資料庫（`quote_cache`），重啟後直接顯示上次的收盤價，不必重查官方。每筆會記下是從哪個主機查到的，換了主機（例如換成測試伺服器）時舊主機的資料不沿用，會向新主機重查。
 
 ## 盈虧怎麼算
 

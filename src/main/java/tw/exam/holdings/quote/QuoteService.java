@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PreDestroy;
 
 /**
- * 收盤價的快取。打開清單只讀快取，不向官方查；向官方查只有兩個時機：
+ * 收盤價的快取（記憶體＋資料庫 quote_cache）。打開清單只讀記憶體，不向官方查；向官方查只有兩個時機：
  * <ol>
  *   <li>新增持股時查代號（同時判斷上市或上櫃）；</li>
  *   <li>背景定時檢查：手上的收盤價比「應該已公布的最近交易日」舊，才重查。</li>
@@ -48,6 +48,7 @@ public class QuoteService {
     private final OfficialQuoteClient client;
     private final QuoteProperties props;
     private final Clock clock;
+    private final QuoteStore store;
     private final Map<String, Entry> cache = new ConcurrentHashMap<>();
     private final ExecutorService lookupPool = Executors.newFixedThreadPool(4, r -> {
         Thread t = new Thread(r, "quote-lookup");
@@ -55,10 +56,16 @@ public class QuoteService {
         return t;
     });
 
-    public QuoteService(OfficialQuoteClient client, QuoteProperties props, Clock clock) {
+    public QuoteService(OfficialQuoteClient client, QuoteProperties props, Clock clock, QuoteStore store) {
         this.client = client;
         this.props = props;
         this.clock = clock;
+        this.store = store;
+        // 重啟後先用上次存下來的收盤價，不必等重查官方；之後照一般規則判斷要不要更新
+        for (QuoteStore.Saved saved : store.load(props.baseUrl(Market.TWSE), props.baseUrl(Market.TPEX))) {
+            cache.put(saved.quote().code(), new Entry(saved.quote(), saved.fetchedAt()));
+        }
+        log.info("載入 {} 筆存下來的收盤價", cache.size());
     }
 
     @PreDestroy
@@ -130,8 +137,10 @@ public class QuoteService {
         Instant deadline = clock.instant().plus(props.requestTimeout().multipliedBy(4));
         MonthData data = recent(market, code, deadline);
         Entry old = cache.get(code);
-        Quote quote = toQuote(market, code, data).orElse(old == null ? null : old.quote());
+        Optional<Quote> fresh = toQuote(market, code, data);
+        Quote quote = fresh.orElse(old == null ? null : old.quote());
         cache.put(code, new Entry(quote, clock.instant()));
+        fresh.ifPresent(q -> save(q));
     }
 
     boolean needsRefresh(String code) {
@@ -152,6 +161,16 @@ public class QuoteService {
 
     public void evict(String code) {
         cache.remove(code);
+        store.delete(code);
+    }
+
+    private void save(Quote q) {
+        try {
+            store.save(q, props.baseUrl(q.market()), clock.instant());
+        } catch (RuntimeException e) {
+            // 存不進資料庫不影響畫面，記憶體裡還有
+            log.warn("收盤價 {} 存入資料庫失敗：{}", q.code(), e.toString());
+        }
     }
 
     /** 查這個月；這個月還沒有交易日（例如月初第一天收盤前）就查上個月。 */
@@ -171,6 +190,7 @@ public class QuoteService {
     private Lookup found(Market market, String code, MonthData data) {
         Optional<Quote> quote = toQuote(market, code, data);
         cache.put(code, new Entry(quote.orElse(null), clock.instant()));
+        quote.ifPresent(this::save);
         return new Lookup.Found(market, data.name(), quote.orElse(null));
     }
 

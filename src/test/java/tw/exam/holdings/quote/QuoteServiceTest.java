@@ -56,7 +56,7 @@ class QuoteServiceTest {
         QuoteProperties props = new QuoteProperties(base, base + "/", Duration.ofSeconds(1), Duration.ofSeconds(2),
                 lookupTimeout, Duration.ZERO, Duration.ZERO, Duration.ofMinutes(10),
                 Duration.ofMinutes(20), Duration.ofMinutes(5), Duration.ofMinutes(5), false);
-        return new QuoteService(new OfficialQuoteClient(props, clock), props, clock);
+        return new QuoteService(new OfficialQuoteClient(props, clock), props, clock, QuoteStore.NONE);
     }
 
     @AfterEach
