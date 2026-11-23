@@ -95,9 +95,19 @@ class LedgerTest {
 
     @Test
     void nhiPremiumOnlyFrom20000() {
-        assertThat(new DividendLine(TODAY, "息", 1, null, null, 19_999L, 0L).nhiPremiumEstimate()).isZero();
-        assertThat(new DividendLine(TODAY, "息", 1, null, null, 20_000L, 0L).nhiPremiumEstimate()).isEqualTo(422);
-        assertThat(new DividendLine(TODAY, "息", 1, null, null, 20_000_000L, 0L).nhiPremiumEstimate()).isEqualTo(211_000);
+        assertThat(new DividendLine(TODAY, "息", 1, null, BigDecimal.ZERO, 19_999L, 0L).nhiPremiumEstimate()).isZero();
+        assertThat(new DividendLine(TODAY, "息", 1, null, BigDecimal.ZERO, 20_000L, 0L).nhiPremiumEstimate()).isEqualTo(422);
+        assertThat(new DividendLine(TODAY, "息", 1, null, BigDecimal.ZERO, 20_000_000L, 0L).nhiPremiumEstimate()).isEqualTo(211_000);
+    }
+
+    @Test
+    void nhiPremiumBaseIncludesStockDividendAtFaceValue() {
+        // 玉山金 2025：16,000 股 × 1.2 ＝ 19,200 元現金（未達 2 萬），配股 160 股面額 1,600 元，合計 20,800 元 → 439
+        LedgerResult r = Ledger.compute("2884", List.of(buy("2025-07-01", 16_000, "30")), List.of(ESUN_2025), TODAY);
+        DividendLine line = r.dividends().get(0);
+        assertThat(line.cash()).isEqualTo(19_200);
+        assertThat(line.dividendIncome()).isEqualTo(20_800);
+        assertThat(line.nhiPremiumEstimate()).isEqualTo(439);
     }
 
     // ---- 持有期間 ----
